@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>語音數字辨識器 5</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .container { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; width: 85%; max-width: 400px; }
+        #status { color: #666; font-size: 0.9rem; margin-bottom: 20px; }
+        #current-word { font-size: 5rem; font-weight: bold; color: #1a73e8; margin: 15px 0; height: 120px; line-height: 120px; border: 2px dashed #ddd; border-radius: 15px; background: #fafafa; }
+        button { width: 100%; padding: 15px; font-size: 1.2rem; cursor: pointer; border: none; border-radius: 12px; margin: 8px 0; font-weight: bold; transition: 0.3s; }
+        #start-btn { background: #34a853; color: white; }
+        #stop-btn { background: #ea4335; color: white; display: none; }
+        .history-box { text-align: left; background: #f8f9fa; padding: 15px; border-radius: 10px; margin-top: 20px; }
+        #history { font-size: 1.4rem; letter-spacing: 3px; word-break: break-all; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>數字辨識 (0-9)</h1>
+    <div id="status">● 系統就緒</div>
+    <div id="current-word">---</div>
+    
+    <button id="start-btn" onclick="toggleListening()">開始錄音 (點擊授權)</button>
+    <button id="stop-btn" onclick="toggleListening()">停止錄音</button>
+    <button onclick="clearHistory()" style="background:#eee;">清除紀錄</button>
+
+    <div class="history-box">
+        <strong>辨識序列：</strong>
+        <div id="history">尚未錄取</div>
+    </div>
+</div>
+
+<script>
+    let isRecording = false;
+    let fullSequence = [];
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+
+    // 設定：專門針對數字優化
+    recognition.lang = 'zh-TW'; // 或 'en-US'，根據你習慣說什麼
+    recognition.continuous = true;
+    recognition.interimResults = false;
+
+    // 數字轉換邏輯 (處理中文一二三轉 123)
+    const numMap = {'零':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9};
+
+    function toggleListening() {
+        const startBtn = document.getElementById('start-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const status = document.getElementById('status');
+
+        if (!isRecording) {
+            try {
+                recognition.start();
+                isRecording = true;
+                startBtn.style.display = 'none';
+                stopBtn.style.display = 'block';
+                status.innerText = "● 正在聆聽數字...";
+                status.style.color = "red";
+            } catch (e) {
+                alert("啟動失敗，請確認是否已允許麥克風權限");
+            }
+        } else {
+            recognition.stop();
+            isRecording = false;
+            startBtn.style.display = 'block';
+            stopBtn.style.display = 'none';
+            status.innerText = "● 已停止";
+            status.style.color = "#666";
+        }
+    }
+
+    recognition.onresult = (event) => {
+        let result = event.results[event.results.length - 1][0].transcript;
+        
+        // 提取並轉換數字
+        let processed = result.split('').map(char => {
+            if (numMap[char] !== undefined) return numMap[char];
+            return char;
+        }).join('');
+
+        let digits = processed.match(/\d/g); // 只抓取 0-9
+        
+        if (digits) {
+            digits.forEach(d => {
+                fullSequence.push(d);
+                document.getElementById('current-word').innerText = d;
+            });
+            updateHistory();
+        }
+    };
+
+    recognition.onerror = (e) => {
+        if(e.error === 'not-allowed') alert("錯誤：麥克風權限被拒絕！請檢查手機設定。");
+        console.error(e);
+    };
+
+    function updateHistory() {
+        document.getElementById('history').innerText = fullSequence.join(" ");
+    }
+
+    function clearHistory() {
+        fullSequence = [];
+        document.getElementById('current-word').innerText = "---";
+        updateHistory();
+    }
+</script>
+
+</body>
+</html>
